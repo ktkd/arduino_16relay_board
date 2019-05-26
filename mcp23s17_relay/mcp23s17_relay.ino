@@ -2,26 +2,62 @@
 #include <SPI.h>
 #include <MCP23x17.h>
 #include <MCP23S17.h>
+#include <OneWire.h>
+
+
+String incomingByte; 
+int temperature = 0;
+long lastUpdateTime = 0; // last update variable
+const int TEMP_UPDATE_TIME = 1000; // update temp pereodically
+
 
 CMCP23S17 mcp23_1; //Select address of chip "0 0 0"
-String incomingByte; 
+OneWire ds(9); // Select pin of OneWire
+
+
 
 //=== function to print the command list:  ===========================
 void printHelp(void){
   Serial.println("--- Command list: ---");
   Serial.println("? -> Print this HELP");
-  Serial.println("RESET -> Reset contoller");
-  Serial.println("STATUS -> Whole board status");
+  Serial.println("STATUS -> All ports status");
   Serial.println("ON_ALL -> Activate all ports");
   Serial.println("OFF_ALL -> Deactivate all port");
   Serial.println("port_#_on -> Port #(1-16) On  \"activate\"");
   Serial.println("port_#_off -> Port #(1-16) Off  \"deactivate\"");
-  Serial.println("port_#_stat -> Port #(1-16) State  \"status\"");  
+  Serial.println("port_#_stat -> Port #(1-16) State  \"status\""); 
+  Serial.println("RESET -> Reset Arduino controller");
+  Serial.println("TEMP -> Show Ambient temperature \"°C\"");   
+  Serial.println("---");
+
   }
-  
+
+//=== function to check temperature:  ===========================
+int detectTemperature(){
+
+  byte data[2];
+  ds.reset();
+  ds.write(0xCC);
+  ds.write(0x44);
+
+  if (millis() - lastUpdateTime > TEMP_UPDATE_TIME)
+  {
+    lastUpdateTime = millis();
+    ds.reset();
+    ds.write(0xCC);
+    ds.write(0xBE);
+    data[0] = ds.read();
+    data[1] = ds.read();
+
+    // prepare variable
+    temperature = (data[1] << 8) + data[0]; temperature = temperature >> 4;
+  }
+}
+
 //---------------- setup ---------------------------------------------
 void setup(){
   SPI.begin();          // Initialize SPI
+  detectTemperature();  // Initialize Temp sensor
   Serial.begin(9600);   // Open serial port (9600 bauds).
   Serial.flush();       // Clear receive buffer.
   mcp23_1.init(10, 0);
@@ -32,6 +68,7 @@ void setup(){
   printHelp();          // Print the command list.
 }
 
+//=== RESET board function:  ===========================
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 
@@ -40,7 +77,7 @@ void loop(){
  if (Serial.available() > 0) { 
    incomingByte = Serial.readString(); //Read data from UART to string
    Serial.flush();                     //Flush data in serial port
-   //Serial.println(incomingByte);     //Print command
+   //Serial.println(incomingByte);     //Print entered command
    if (incomingByte == "?")
     {
          printHelp();
@@ -50,6 +87,12 @@ void loop(){
          resetFunc();  //call reset
          delay(100);
          Serial.println("this never happens :D");    
+    }
+   if (incomingByte == "TEMP")
+    {
+         detectTemperature(); // call the pope
+         Serial.print("temp=");
+         Serial.println(temperature); // Print current temp
     }
    if (incomingByte == "STATUS")
     {

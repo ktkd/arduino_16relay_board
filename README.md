@@ -1,5 +1,7 @@
-# arduino and MCP23S17 16 port relay board control
-Control 16 Relay module(High level trigger) through UART with arduino and MCP23S17 chip.
+# arduino with MCP23S17 16 port relay board control
+ - Script friendly command interface via serial port
+ - Ambient Temperature sensor (ds18b20)
+ - Control 16 Relay module(High level trigger) through MCP23S17 chip.
 
 
 
@@ -7,13 +9,16 @@ UART MENU:
 ```
 --- Command list: ---
 ? -> Print this HELP
-RESET -> Reset contoller
-STATUS -> Whole board status
+STATUS -> All ports status
 ON_ALL -> Activate all ports
 OFF_ALL -> Deactivate all port
 port_#_on -> Port #(1-16) On  "activate"
 port_#_off -> Port #(1-16) Off  "deactivate"
 port_#_stat -> Port #(1-16) State  "status"
+RESET -> Reset Arduino controller
+TEMP -> Show Ambient temperature "°C"
+---
+
 ```
 
 UART STATUS PAGE:
