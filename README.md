@@ -1,4 +1,4 @@
-# arduino_16relay_board
+# arduino and MCP23S17 16 port relay board control
 Control 16 Relay module(High level trigger) through UART with arduino and MCP23S17 chip.
 
 
