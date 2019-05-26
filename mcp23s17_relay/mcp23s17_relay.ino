@@ -27,7 +27,7 @@ void printHelp(void){
   Serial.println("port_#_off -> Port #(1-16) Off  \"deactivate\"");
   Serial.println("port_#_stat -> Port #(1-16) State  \"status\""); 
   Serial.println("RESET -> Reset Arduino controller");
-  Serial.println("TEMP -> Show Ambient temperature \"°C\"");   
+  Serial.println("TEMP -> Show Ambient temperature \"C\"");   
   Serial.println("---");
 
   }
