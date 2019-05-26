@@ -1,4 +1,3 @@
-
 #include <SPI.h>
 #include <MCP23x17.h>
 #include <MCP23S17.h>
@@ -92,7 +91,7 @@ void serialEvent() {
 //--------------- loop ----------------------------------------------- 
 void loop(){
   if (stringComplete) {
-   //Serial.print(incomingByte); //debug print entered command
+   //Serial.println(incomingByte); //debug print entered command
    if (incomingByte == "?\n")
     {
          printHelp();
@@ -384,3 +383,4 @@ void loop(){
    stringComplete = false;
 
 }}
+
