@@ -9,16 +9,15 @@ UART MENU:
 ```
 --- Command list: ---
 ? -> Print this HELP
-STATUS -> All ports status
-ON_ALL -> Activate all ports
-OFF_ALL -> Deactivate all port
-port_#_on -> Port #(1-16) On  "activate"
-port_#_off -> Port #(1-16) Off  "deactivate"
-port_#_stat -> Port #(1-16) State  "status"
-RESET -> Reset Arduino controller
-TEMP -> Show Ambient temperature "°C"
+port * on  -> Activate all ports
+port * off  -> Deactivate all port
+port * stat  -> All ports status
+port # on  -> Port #(1-16) On  "activate"
+port # off  -> Port #(1-16) Off  "deactivate"
+port # stat  -> Port #(1-16) State  "status"
+reset -> Reset Arduino controller
+temp -> Show Ambient temperature "C"
 ---
-
 ```
 
 UART STATUS PAGE:

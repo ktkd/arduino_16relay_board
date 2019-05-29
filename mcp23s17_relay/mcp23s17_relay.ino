@@ -14,20 +14,23 @@ const int TEMP_UPDATE_TIME = 1000; // update temp pereodically
 CMCP23S17 mcp23_1; //Select address of chip "0 0 0"
 OneWire ds(9); // Select pin of OneWire
 
-
+bool inRange(int val, int minimum, int maximum)
+{
+  return ((minimum <= val) && (val <= maximum));
+}
 
 //=== function to print the command list:  ===========================
 void printHelp(void){
   Serial.println("--- Command list: ---");
   Serial.println("? -> Print this HELP");
-  Serial.println("STATUS -> All ports status");
-  Serial.println("ON_ALL -> Activate all ports");
-  Serial.println("OFF_ALL -> Deactivate all port");
-  Serial.println("port_#_on -> Port #(1-16) On  \"activate\"");
-  Serial.println("port_#_off -> Port #(1-16) Off  \"deactivate\"");
-  Serial.println("port_#_stat -> Port #(1-16) State  \"status\""); 
-  Serial.println("RESET -> Reset Arduino controller");
-  Serial.println("TEMP -> Show Ambient temperature \"C\"");   
+  Serial.println("port * on  -> Activate all ports");
+  Serial.println("port * off  -> Deactivate all port");
+  Serial.println("port * stat  -> All ports status");
+  Serial.println("port # on  -> Port #(1-16) On  \"activate\"");
+  Serial.println("port # off  -> Port #(1-16) Off  \"deactivate\"");
+  Serial.println("port # stat  -> Port #(1-16) State  \"status\""); 
+  Serial.println("reset -> Reset Arduino controller");
+  Serial.println("temp -> Show Ambient temperature \"C\"");   
   Serial.println("---");
 
   }
@@ -88,297 +91,133 @@ void serialEvent() {
 }
 
 
-//--------------- loop ----------------------------------------------- 
-void loop(){
-  if (stringComplete) {
-   //Serial.println(incomingByte); //debug print entered command
-   if (incomingByte == "?\n")
-    {
-         printHelp();
+String getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length()-1;
+
+  for(int i=0; i<=maxIndex && found<=index; i++){
+    if(data.charAt(i)==separator || i==maxIndex){
+        found++;
+        strIndex[0] = strIndex[1]+1;
+        strIndex[1] = (i == maxIndex) ? i+1 : i;
     }
-   if (incomingByte == "RESET\n")
+  }
+
+  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+//--------------- parser ----------------------------------------------- 
+void parseCommand(String com)
+{
+  String  part1;
+  String  part2;
+  String  part3;
+
+  part1 =  getValue(com,' ',0);
+  part1.trim();
+  part2 =  getValue(com,' ',1);
+  part2.trim();
+  part3 =  getValue(com,' ',2);
+  part3.trim();
+  
+     //Serial.println(part1 + " part 1");        //debug
+     //Serial.println(part2 + " part 2");        //debug
+     //Serial.println(part3 + " part 3");        //debug
+
+  if(part1.equalsIgnoreCase("port"))
+    {
+         if(inRange(part2.toInt(), 1, 16))
+           {
+             if (part3.equalsIgnoreCase("on"))
+               {
+                 mcp23_1.digitalWrite(part2.toInt()-1, HIGH);
+                 Serial.println("port=" + part2 + ",status=" + part3);
+               }
+             else if (part3.equalsIgnoreCase("off"))
+               {
+                 mcp23_1.digitalWrite(part2.toInt()-1, LOW);
+                 Serial.println("port=" + part2 + ",status=" + part3);
+               }
+             else if (part3.equalsIgnoreCase("stat"))
+               {
+                 Serial.print("port=" + part2 + ",status=");
+                 Serial.println(mcp23_1.digitalRead(4));
+               }
+             else 
+               {
+                 Serial.println("syntax erro3r"); // Print syntax error
+               }
+           }
+         else if(part2.equalsIgnoreCase("*"))
+           {
+             if (part3.equalsIgnoreCase("on"))
+               {
+                 for (int i=0; i<16; i++) {
+                 delay(200); 
+                 mcp23_1.digitalWrite(i, HIGH);
+                 delay(100);       //little timeout to protect power supply from high load.
+                 }
+                 Serial.println("ON_ALL=OK");
+               }
+             else if (part3.equalsIgnoreCase("off"))
+               {
+                 for (int i=0; i<16; i++) {
+                 mcp23_1.digitalWrite(i, LOW);
+                 delay(100);      //little timeout
+                 }
+                 Serial.println("OFF_ALL=OK");
+               }
+             else if (part3.equalsIgnoreCase("stat"))
+               {
+                 for (int i=0; i<16; i++) 
+                   {
+                     Serial.print("port=");
+                     Serial.print(i+1);
+                     Serial.print(",status=");
+                     Serial.println(mcp23_1.digitalRead(i));
+                     }
+               }
+             else 
+               {
+                 Serial.println("syntax erro2r"); // Print syntax error
+               }
+           }   
+         else
+           {
+             Serial.println("syntax erro1r"); // Print syntax error
+           }
+    }
+  else if(part1.equalsIgnoreCase("reset"))
     {
          resetFunc();  //call reset
          delay(100);
-         Serial.println("this never happens :D");    
+         Serial.println("this never happens :D");  
     }
-   if (incomingByte == "TEMP\n")
+  else if(part1.equalsIgnoreCase("temp"))
     {
          detectTemperature(); // call the pope
          Serial.print("temp=");
          Serial.println(temperature); // Print current temp
     }
-   if (incomingByte == "STATUS\n")
+  else if(part1.equalsIgnoreCase("?"))
     {
-         for (int i=0; i<16; i++) 
-          {
-            Serial.print("port=");
-            Serial.print(i+1);
-            Serial.print(",status=");
-            Serial.println(mcp23_1.digitalRead(i));
-            
-          }
-    }    
-   if (incomingByte == "ON_ALL\n")
+         printHelp();
+    }
+  else
     {
-            for (int i=0; i<16; i++) {
-              delay(200); 
-              mcp23_1.digitalWrite(i, HIGH);
-              delay(100);       //little timeout to protect power supply from high load.
-            }
-            Serial.println("OK");
-    }    
-   if (incomingByte == "OFF_ALL\n")
-    {
-            for (int i=0; i<16; i++) {
-              mcp23_1.digitalWrite(i, LOW);
-              delay(100);      //little timeout
-            }
-            Serial.println("OK");
-    }    
+         Serial.println("syntax error"); // Print syntax error
+    }
 
-   if (incomingByte == "port_1_on\n")
-    {
-            mcp23_1.digitalWrite(0, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_2_on\n")
-    {
-            mcp23_1.digitalWrite(1, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_3_on\n")
-    {
-            mcp23_1.digitalWrite(2, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_4_on\n")
-    {
-            mcp23_1.digitalWrite(3, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_5_on\n")
-    {
-            mcp23_1.digitalWrite(4, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_6_on\n")
-    {
-            mcp23_1.digitalWrite(5, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_7_on\n")
-    {
-            mcp23_1.digitalWrite(6, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_8_on\n")
-    {
-            mcp23_1.digitalWrite(7, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_9_on\n")
-    {
-            mcp23_1.digitalWrite(8, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_10_on\n")
-    {
-            mcp23_1.digitalWrite(9, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_11_on\n")
-    {
-            mcp23_1.digitalWrite(10, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_12_on\n")
-    {
-            mcp23_1.digitalWrite(11, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_13_on\n")
-    {
-            mcp23_1.digitalWrite(12, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_14_on\n")
-    {
-            mcp23_1.digitalWrite(13, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_15_on\n")
-    {
-            mcp23_1.digitalWrite(14, HIGH);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_16_on\n")
-    {
-            mcp23_1.digitalWrite(15, HIGH);
-            Serial.println("OK");
-    }
-    //Set LOW state per port block
-   if (incomingByte == "port_1_off\n")
-    {
-            mcp23_1.digitalWrite(0, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_2_off\n")
-    {
-            mcp23_1.digitalWrite(1, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_3_off\n")
-    {
-            mcp23_1.digitalWrite(2, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_4_off\n")
-    {
-            mcp23_1.digitalWrite(3, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_5_off\n")
-    {
-            mcp23_1.digitalWrite(4, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_6_off\n")
-    {
-            mcp23_1.digitalWrite(5, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_7_off\n")
-    {
-            mcp23_1.digitalWrite(6, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_8_off\n")
-    {
-            mcp23_1.digitalWrite(7, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_9_off\n")
-    {
-            mcp23_1.digitalWrite(8, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_10_off\n")
-    {
-            mcp23_1.digitalWrite(9, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_11_off\n")
-    {
-            mcp23_1.digitalWrite(10, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_12_off\n")
-    {
-            mcp23_1.digitalWrite(11, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_13_off\n")
-    {
-            mcp23_1.digitalWrite(12, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_14_off\n")
-    {
-            mcp23_1.digitalWrite(13, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_15_off\n")
-    {
-            mcp23_1.digitalWrite(14, LOW);
-            Serial.println("OK");
-    }
-   if (incomingByte == "port_16_off\n")
-    {
-            mcp23_1.digitalWrite(15, LOW);
-            Serial.println("OK");
-    }
-    //Read status per port block
-   if (incomingByte == "port_1_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(0));
-    }
-   if (incomingByte == "port_2_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(1));
-    }
-   if (incomingByte == "port_3_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(2));
-    }
-   if (incomingByte == "port_4_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(3));
-    }
-   if (incomingByte == "port_5_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(4));
-    }
-   if (incomingByte == "port_6_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(5));
-    }
-   if (incomingByte == "port_7_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(6));
-    }
-   if (incomingByte == "port_8_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(7));
-    }
-   if (incomingByte == "port_9_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(8));
-    }
-   if (incomingByte == "port_10_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(9));
-    }
-   if (incomingByte == "port_11_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(10));
-    }
-   if (incomingByte == "port_12_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(11));
-    }
-   if (incomingByte == "port_13_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(12));
-    }
-   if (incomingByte == "port_14_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(13));
-    }
-   if (incomingByte == "port_15_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(14));
-    }
-   if (incomingByte == "port_16_stat\n")
-    {
-            Serial.print("status=");
-            Serial.println(mcp23_1.digitalRead(15));
-    }
+}
+
+
+//--------------- loop ----------------------------------------------- 
+void loop(){
+  if (stringComplete) {
+   parseCommand(incomingByte);
+   //Serial.println(incomingByte); //debug print entered command
    incomingByte = "";
    stringComplete = false;
 
